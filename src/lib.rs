@@ -6,7 +6,6 @@
 //!
 //! ## Features
 //!  - Export structs and enums to [Typescript](https://www.typescriptlang.org)
-//!  - Get function types to use in libraries like [tauri-specta](https://github.com/oscartbeaumont/tauri-specta)
 //!  - Supports wide range of common crates in Rust ecosystem
 //!  - Supports type inference - can determine type of `fn demo() -> impl Type`.
 //!
@@ -15,7 +14,6 @@
 //! Specta can be used in your application either directly or through a library which simplifies the process of using it.
 //!
 //! - [rspc](https://github.com/oscartbeaumont/rspc) for easily building end-to-end typesafe APIs
-//! - [tauri-specta](https://github.com/oscartbeaumont/tauri-specta) for typesafe Tauri commands
 //!
 //! ## Example
 //! ```rust
@@ -103,11 +101,6 @@ pub use r#type::*;
 /// }
 /// ```
 pub use specta_macros::Type;
-
-#[doc(hidden)]
-/// This macro is exposed from rspc as a wrapper around [Type] with a correct import path.
-/// This is exposed from here so rspc doesn't need a macro package for 4 lines of code.
-pub use specta_macros::RSPCType;
 
 /// Generates an implementation to help converting a type into into [`DataType`].
 ///

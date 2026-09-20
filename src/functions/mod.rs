@@ -1,10 +1,6 @@
 mod arg;
 mod result;
-#[cfg(feature = "tauri")]
-mod tauri;
 
-#[cfg(feature = "tauri")]
-pub use self::tauri::*;
 pub use arg::*;
 pub use result::*;
 

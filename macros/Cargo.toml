@@ -7,7 +7,7 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/oscartbeaumont/specta"
 documentation = "https://docs.rs/specta/latest/specta"
-keywords = ["async", "specta", "rspc", "typescript", "typesafe"]
+keywords = ["async", "specta", "typescript", "typesafe"]
 categories = ["web-programming", "asynchronous"]
 
 [features]
