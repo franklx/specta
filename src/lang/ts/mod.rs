@@ -83,6 +83,7 @@ fn export_datatype_inner(
             NamedDataTypeItem::Object(obj) => DataType::Object(obj.clone()),
             NamedDataTypeItem::Tuple(tuple) => DataType::Tuple(tuple.clone()),
             NamedDataTypeItem::Enum(enum_) => DataType::Enum(enum_.clone()),
+            NamedDataTypeItem::Custom(custom) => DataType::Custom(custom.clone()),
         },
     )?;
 
@@ -103,6 +104,8 @@ fn export_datatype_inner(
         NamedDataTypeItem::Tuple(TupleType { generics, .. }) => {
             (!generics.is_empty()).then_some(generics)
         }
+        // Custom definition
+        NamedDataTypeItem::Custom(_) => None,
     };
 
     let generics = generics
@@ -126,6 +129,40 @@ pub fn datatype(conf: &ExportConfiguration, typ: &DataType) -> Result<String, Ts
     // TODO: Duplicate type name detection?
 
     datatype_inner(ExportContext { conf, path: vec![] }, typ)
+}
+
+/// Convert a DataType to a TypeScript string with forced expansion
+///
+/// Eg. `{ demo: string; }`
+pub fn datatype_inlined(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
+    // TODO: Duplicate type name detection?
+
+    datatype_inner_inlined(ExportContext { conf, path: vec![] }, typ)
+}
+
+fn datatype_inner_inlined(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
+    Ok(match &typ {
+        DataType::Named(NamedDataType {
+            name,
+            item: NamedDataTypeItem::Tuple(TupleType { fields, .. }),
+            ..
+        }) => tuple_datatype(ctx.with(PathItem::Type(name)), fields)?,
+        DataType::Named(NamedDataType {
+            name,
+            item: NamedDataTypeItem::Object(item),
+            ..
+        }) => object_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
+        DataType::Named(NamedDataType {
+            name,
+            item: NamedDataTypeItem::Enum(item),
+            ..
+        }) => enum_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
+        DataType::Named(NamedDataType {
+            item: NamedDataTypeItem::Custom(custom),
+            ..
+        }) => custom.to_string(),
+        _ => datatype_inner(ctx, typ)?
+    })
 }
 
 fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
@@ -186,23 +223,9 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
                 format!("{dt}[]")
             }
         }
-        DataType::Named(NamedDataType {
-            name,
-            item: NamedDataTypeItem::Tuple(TupleType { fields, .. }),
-            ..
-        }) => tuple_datatype(ctx.with(PathItem::Type(name)), fields)?,
+        DataType::Named(NamedDataType { name, .. }) => name.to_string(),
         DataType::Tuple(TupleType { fields, .. }) => tuple_datatype(ctx, fields)?,
-        DataType::Named(NamedDataType {
-            name,
-            item: NamedDataTypeItem::Object(item),
-            ..
-        }) => object_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
         DataType::Object(item) => object_datatype(ctx, None, item)?,
-        DataType::Named(NamedDataType {
-            name,
-            item: NamedDataTypeItem::Enum(item),
-            ..
-        }) => enum_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
         DataType::Enum(item) => enum_datatype(ctx, None, item)?,
         DataType::Reference(DataTypeReference { name, generics, .. }) => match &generics[..] {
             [] => name.to_string(),
@@ -217,6 +240,7 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
             }
         },
         DataType::Generic(GenericType(ident)) => ident.to_string(),
+        DataType::Custom(custom) => custom.to_owned(),
     })
 }
 
@@ -310,7 +334,7 @@ fn enum_datatype(
                         format!("{{ {} }}", fields.join("; "))
                     }
                     (EnumRepr::External, EnumVariant::Unit) => {
-                        format!("{sanitised_name}")
+                        sanitised_name.to_string()
                     }
 
                     (EnumRepr::External, v) => {

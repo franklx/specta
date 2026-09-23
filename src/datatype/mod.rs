@@ -50,6 +50,8 @@ pub enum DataType {
     // A reference type that has already been defined
     Reference(DataTypeReference),
     Generic(GenericType),
+    // Custom datatype (string literal)
+    Custom(String),
 }
 
 /// A named type represents a non-primitive type capable of being exported as it's own named entity.
@@ -86,6 +88,8 @@ pub enum NamedDataTypeItem {
     Enum(EnumType),
     /// Represents an Rust struct with unnamed fields
     Tuple(TupleType),
+    /// Represents a custom typescript type
+    Custom(String),
 }
 
 /// A reference to a [`DataType`] that can be used before a type is resolved in order to

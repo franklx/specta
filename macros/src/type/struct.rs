@@ -158,20 +158,32 @@ pub fn parse_struct(
                 .map(|t| quote!(Some(#t)))
                 .unwrap_or(quote!(None));
 
-            named_data_type_wrapper(
-                crate_ref,
-                container_attrs,
-                name,
-                quote! {
-                    #crate_ref::NamedDataTypeItem::Object(
-                        #crate_ref::ObjectType {
-                            generics: vec![#(#definition_generics),*],
-                            fields: vec![#(#fields),*],
-                            tag: #tag,
-                        }
-                    )
-                },
-            )
+            if let Some(custom) = struct_attrs.custom {
+                named_data_type_wrapper(
+                    crate_ref,
+                    container_attrs,
+                    name,
+                    quote! {
+                        #crate_ref::NamedDataTypeItem::Custom(#custom.to_owned())
+                    },
+                )
+            }
+            else {
+                named_data_type_wrapper(
+                    crate_ref,
+                    container_attrs,
+                    name,
+                    quote! {
+                        #crate_ref::NamedDataTypeItem::Object(
+                            #crate_ref::ObjectType {
+                                generics: vec![#(#definition_generics),*],
+                                fields: vec![#(#fields),*],
+                                tag: #tag,
+                            }
+                        )
+                    },
+                )
+            }
         }
         Fields::Unnamed(_) => {
             if struct_attrs.transparent {

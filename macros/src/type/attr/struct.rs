@@ -5,11 +5,13 @@ use crate::utils::Attribute;
 #[derive(Default)]
 pub struct StructAttr {
     pub transparent: bool,
+    pub custom: Option<String>,
 }
 
 impl_parse! {
     StructAttr(attr, out) {
-        "transparent" => out.transparent = attr.parse_bool().unwrap_or(true)
+        "transparent" => out.transparent = attr.parse_bool().unwrap_or(true),
+        "custom" => out.custom = out.custom.take().or(Some(attr.parse_string()?)),
     }
 }
 
