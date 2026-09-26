@@ -175,7 +175,7 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
                 primitive_def!(usize isize i64 u64 i128 u128) => match ctx.conf.bigint {
                     BigIntExportBehavior::String => "string".into(),
                     BigIntExportBehavior::Number => "number".into(),
-                    BigIntExportBehavior::BigInt => "BigInt".into(),
+                    BigIntExportBehavior::BigInt => "bigint".into(),
                     BigIntExportBehavior::Fail => {
                         return Err(TsExportError::BigIntForbidden(ctx.export_path()))
                     }
@@ -223,6 +223,12 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
                 format!("{dt}[]")
             }
         }
+        // TODO: why here we don't know if it's inlined?
+        DataType::Named(NamedDataType {
+            item: NamedDataTypeItem::Custom(custom),
+            ..
+        }) => custom.to_string(),
+
         DataType::Named(NamedDataType { name, .. }) => name.to_string(),
         DataType::Tuple(TupleType { fields, .. }) => tuple_datatype(ctx, fields)?,
         DataType::Object(item) => object_datatype(ctx, None, item)?,
@@ -390,13 +396,17 @@ impl LiteralType {
 fn object_field_to_ts(ctx: ExportContext, field: &ObjectField) -> Result<String, TsExportError> {
     let field_name_safe = sanitise_key(field.key, false);
 
-    // https://github.com/oscartbeaumont/rspc/issues/100#issuecomment-1373092211
-    let (key, ty) = match field.optional {
-        true => (format!("{field_name_safe}?"), &field.ty),
-        false => (field_name_safe, &field.ty),
-    };
-
-    Ok(format!("{key}: {}", datatype_inner(ctx, ty)?))
+    if let DataType::Nullable(ty) = &field.ty {
+        Ok(format!("{field_name_safe}?: {}", datatype_inner(ctx, ty)?))
+    }
+    else {
+        // https://github.com/oscartbeaumont/rspc/issues/100#issuecomment-1373092211
+        let (key, ty) = match field.optional {
+            true => (format!("{field_name_safe}?"), &field.ty),
+            false => (field_name_safe, &field.ty),
+        };
+        Ok(format!("{key}: {}", datatype_inner(ctx, ty)?))
+    }
 }
 
 /// sanitise a string to be a valid Typescript key
