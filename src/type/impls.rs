@@ -21,13 +21,13 @@ const _: () = {
     impl_containers!(Mutex RwLock);
 };
 
-impl<'a> Type for &'a str {
+impl Type for &str {
     fn inline(opts: DefOpts, generics: &[DataType]) -> Result<DataType, ExportError> {
         String::inline(opts, generics)
     }
 }
 
-impl<'a, T: Type + 'static> Type for &'a T {
+impl<T: Type + 'static> Type for &T {
     fn inline(opts: DefOpts, generics: &[DataType]) -> Result<DataType, ExportError> {
         T::inline(opts, generics)
     }
@@ -112,7 +112,7 @@ impl_for_list!(
     BTreeSet<T> as "BTreeSet"
 );
 
-impl<'a, T: Type> Type for &'a [T] {
+impl<T: Type> Type for &[T] {
     fn inline(opts: DefOpts, generics: &[DataType]) -> Result<DataType, ExportError> {
         <Vec<T>>::inline(opts, generics)
     }
@@ -136,7 +136,7 @@ impl<T: Type> Type for Option<T> {
     fn inline(opts: DefOpts, generics: &[DataType]) -> Result<DataType, ExportError> {
         Ok(DataType::Nullable(Box::new(
             generics
-                .get(0)
+                .first()
                 .cloned()
                 .map_or_else(|| T::inline(opts, generics), Ok)?,
         )))
@@ -145,7 +145,7 @@ impl<T: Type> Type for Option<T> {
     fn category_impl(opts: DefOpts, generics: &[DataType]) -> Result<TypeCategory, ExportError> {
         Ok(TypeCategory::Inline(DataType::Nullable(Box::new(
             generics
-                .get(0)
+                .first()
                 .cloned()
                 .map_or_else(|| T::reference(opts, generics), Ok)?,
         ))))

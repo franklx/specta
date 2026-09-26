@@ -23,7 +23,6 @@ pub struct StructWithBigInt {
 
 #[derive(Type)]
 #[specta(export = false)]
-
 pub struct StructWithStructWithBigInt {
     #[specta(inline)] // Inline required so reference is not used and error is part of parent
     pub abc: StructWithBigInt,
@@ -31,7 +30,6 @@ pub struct StructWithStructWithBigInt {
 
 #[derive(Type)]
 #[specta(export = false)]
-
 pub struct StructWithStructWithStructWithBigInt {
     #[specta(inline)] // Inline required so reference is not used and error is part of parent
     pub field1: StructWithStructWithBigInt,
@@ -46,7 +44,6 @@ pub struct StructWithOptionWithStructWithBigInt {
 
 #[derive(Type)]
 #[specta(export = false)]
-
 pub enum EnumWithStructWithStructWithBigInt {
     #[specta(inline)]
     A(StructWithStructWithBigInt),
@@ -61,7 +58,7 @@ fn test_bigint_types() {
 
     for_bigint_types!(T -> |name| assert_eq!(specta::ts::inline::<T>(&ExportConfiguration::new().bigint(BigIntExportBehavior::String)), Ok("string".into())));
     for_bigint_types!(T -> |name| assert_eq!(specta::ts::inline::<T>(&ExportConfiguration::new().bigint(BigIntExportBehavior::Number)), Ok("number".into())));
-    for_bigint_types!(T -> |name| assert_eq!(specta::ts::inline::<T>(&ExportConfiguration::new().bigint(BigIntExportBehavior::BigInt)), Ok("BigInt".into())));
+    for_bigint_types!(T -> |name| assert_eq!(specta::ts::inline::<T>(&ExportConfiguration::new().bigint(BigIntExportBehavior::BigInt)), Ok("bigint".into())));
 
     // Check error messages are working correctly -> These tests second for `ExportPath` which is why they are so comprehensive
     assert_eq!(
