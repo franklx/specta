@@ -34,7 +34,6 @@ impl ObjectType {
             name,
             sid: None,
             impl_location: None,
-            comments: &[],
             export: None,
             deprecated: None,
             item: NamedDataTypeItem::Object(self),

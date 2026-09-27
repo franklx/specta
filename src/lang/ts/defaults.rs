@@ -1,22 +1,29 @@
-mod comments;
-mod context;
-mod error;
-mod export_config;
-mod defaults;
-
-pub use comments::*;
-pub use context::*;
-pub use error::*;
-pub use export_config::*;
-
-use crate::*;
+use crate::{
+    DataType, DataTypeReference,
+    DefOpts,
+    EnumRepr, EnumType, EnumVariant,
+    GenericType,
+    NamedDataType, NamedDataTypeItem, NamedType, ObjectField,
+    ObjectType, PrimitiveType, TupleType,
+    Type, TypeDefs,
+    detect_duplicate_type_names,
+    primitive_def,
+    ts::{
+        BigIntExportBehavior,
+        ExportConfiguration, ExportContext,
+        NamedLocation, PathItem,
+        TsExportError,
+        sanitise_key,
+        sanitise_type_name,
+    }
+};
 
 /// Convert a type which implements [`Type`](crate::Type) to a TypeScript string with an export.
 ///
-/// Eg. `export type Foo = { demo: string; };`
+/// Eg. `export const dfl_Foo = { demo: ""; };`
 pub fn export<T: NamedType>(conf: &ExportConfiguration) -> Result<String, TsExportError> {
     let mut type_name = TypeDefs::default();
-    let result = export_datatype(
+    let result = export_dfldt(
         conf,
         &T::definition_named_data_type(DefOpts {
             parent_inline: false,
@@ -33,10 +40,10 @@ pub fn export<T: NamedType>(conf: &ExportConfiguration) -> Result<String, TsExpo
 
 /// Convert a type which implements [`Type`](crate::Type) to a TypeScript string.
 ///
-/// Eg. `{ demo: string; };`
+/// Eg. `{ demo: ""; };`
 pub fn inline<T: Type>(conf: &ExportConfiguration) -> Result<String, TsExportError> {
     let mut type_name = TypeDefs::default();
-    let result = datatype(
+    let result = dfldt(
         conf,
         &T::inline(
             DefOpts {
@@ -57,16 +64,16 @@ pub fn inline<T: Type>(conf: &ExportConfiguration) -> Result<String, TsExportErr
 /// Convert a DataType to a TypeScript string
 ///
 /// Eg. `export Name = { demo: string; }`
-pub fn export_datatype(
+pub fn export_dfldt(
     conf: &ExportConfiguration,
     typ: &NamedDataType,
 ) -> Result<String, TsExportError> {
     // TODO: Duplicate type name detection?
 
-    export_datatype_inner(ExportContext { conf, path: vec![] }, typ)
+    export_dfldt_inner(ExportContext { conf, path: vec![] }, typ)
 }
 
-fn export_datatype_inner(
+fn export_dfldt_inner(
     ctx: ExportContext,
     NamedDataType {
         name,
@@ -77,7 +84,7 @@ fn export_datatype_inner(
     let ctx = ctx.with(PathItem::Type(name));
     let name = sanitise_type_name(ctx.clone(), NamedLocation::Type, name)?;
 
-    let inline_ts = datatype_inner(
+    let inline_ts = dfldt_inner(
         ctx.clone(),
         &match item {
             NamedDataTypeItem::Object(obj) => DataType::Object(obj.clone()),
@@ -113,64 +120,64 @@ fn export_datatype_inner(
         .unwrap_or_default();
 
     Ok(format!(
-        "export type {name}{generics} = {inline_ts}"
+        "export const dfl_{name}{generics} = () => {{ ({inline_ts}) }}"
     ))
 }
 
 /// Convert a DataType to a TypeScript string
 ///
 /// Eg. `{ demo: string; }`
-pub fn datatype(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
+pub fn dfldt(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
     // TODO: Duplicate type name detection?
 
-    datatype_inner(ExportContext { conf, path: vec![] }, typ)
+    dfldt_inner(ExportContext { conf, path: vec![] }, typ)
 }
 
 /// Convert a DataType to a TypeScript string with forced expansion
 ///
 /// Eg. `{ demo: string; }`
-pub fn datatype_inlined(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
+pub fn dfldt_inlined(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
     // TODO: Duplicate type name detection?
 
-    datatype_inner_inlined(ExportContext { conf, path: vec![] }, typ)
+    dfldt_inner_inlined(ExportContext { conf, path: vec![] }, typ)
 }
 
-fn datatype_inner_inlined(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
+fn dfldt_inner_inlined(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
     Ok(match &typ {
         DataType::Named(NamedDataType {
             name,
             item: NamedDataTypeItem::Tuple(TupleType { fields, .. }),
             ..
-        }) => tuple_datatype(ctx.with(PathItem::Type(name)), fields)?,
+        }) => tuple_dfldt(ctx.with(PathItem::Type(name)), fields)?,
         DataType::Named(NamedDataType {
             name,
             item: NamedDataTypeItem::Object(item),
             ..
-        }) => object_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
+        }) => object_dfldt(ctx.with(PathItem::Type(name)), Some(name), item)?,
         DataType::Named(NamedDataType {
             name,
             item: NamedDataTypeItem::Enum(item),
             ..
-        }) => enum_datatype(ctx.with(PathItem::Type(name)), Some(name), item)?,
+        }) => enum_dfldt(ctx.with(PathItem::Type(name)), Some(name), item)?,
         DataType::Named(NamedDataType {
             item: NamedDataTypeItem::Custom(custom),
             ..
         }) => custom.to_string(),
-        _ => datatype_inner(ctx, typ)?
+        _ => dfldt_inner(ctx, typ)?
     })
 }
 
-fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
+fn dfldt_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
     Ok(match &typ {
-        DataType::Any => "any".into(),
+        DataType::Any => "null".into(),
         DataType::Primitive(p) => {
             let ctx = ctx.with(PathItem::Type(p.to_rust_str()));
             match p {
-                primitive_def!(i8 i16 i32 u8 u16 u32 f32 f64) => "number".into(),
+                primitive_def!(i8 i16 i32 u8 u16 u32 f32 f64) => "0".into(),
                 primitive_def!(usize isize i64 u64 i128 u128) => match ctx.conf.bigint {
-                    BigIntExportBehavior::String => "string".into(),
-                    BigIntExportBehavior::Number => "number".into(),
-                    BigIntExportBehavior::BigInt => "bigint".into(),
+                    BigIntExportBehavior::String => r#""""#.into(),
+                    BigIntExportBehavior::Number => "0".into(),
+                    BigIntExportBehavior::BigInt => "0".into(),
                     BigIntExportBehavior::Fail => {
                         return Err(TsExportError::BigIntForbidden(ctx.export_path()))
                     }
@@ -178,19 +185,13 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
                         return Err(TsExportError::Other(ctx.export_path(), reason.to_owned()))
                     }
                 },
-                primitive_def!(String char) => "string".into(),
-                primitive_def!(bool) => "boolean".into(),
+                primitive_def!(String char) => r#""""#.into(),
+                primitive_def!(bool) => "false".into(),
             }
         }
         DataType::Literal(literal) => literal.to_ts(),
-        DataType::Nullable(def) => {
-            let dt = datatype_inner(ctx, def)?;
-
-            if dt.ends_with(" | null") {
-                dt
-            } else {
-                format!("{dt} | null",)
-            }
+        DataType::Nullable(_) => {
+            "".into()
         }
         DataType::Record(def) => {
             let divider = match &def.0 {
@@ -205,18 +206,14 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
             format!(
                 // We use this isn't of `Record<K, V>` to avoid issues with circular references.
                 "{{ [key{divider} {}]: {} }}",
-                datatype_inner(ctx.clone(), &def.0)?,
-                datatype_inner(ctx, &def.1)?
+                dfldt_inner(ctx.clone(), &def.0)?,
+                dfldt_inner(ctx, &def.1)?
             )
         }
         // We use `T[]` instead of `Array<T>` to avoid issues with circular references.
         DataType::List(def) => {
-            let dt = datatype_inner(ctx, def)?;
-            if dt.contains(' ') && !dt.ends_with("}") {
-                format!("({dt})[]")
-            } else {
-                format!("{dt}[]")
-            }
+            let dt = dfldt_inner(ctx, def)?;
+            format!("[] as {dt}")
         }
         // TODO: why here we don't know if it's inlined?
         DataType::Named(NamedDataType {
@@ -225,15 +222,15 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
         }) => custom.to_string(),
 
         DataType::Named(NamedDataType { name, .. }) => name.to_string(),
-        DataType::Tuple(TupleType { fields, .. }) => tuple_datatype(ctx, fields)?,
-        DataType::Object(item) => object_datatype(ctx, None, item)?,
-        DataType::Enum(item) => enum_datatype(ctx, None, item)?,
+        DataType::Tuple(TupleType { fields, .. }) => tuple_dfldt(ctx, fields)?,
+        DataType::Object(item) => object_dfldt(ctx, None, item)?,
+        DataType::Enum(item) => enum_dfldt(ctx, None, item)?,
         DataType::Reference(DataTypeReference { name, generics, .. }) => match &generics[..] {
             [] => name.to_string(),
             generics => {
                 let generics = generics
                     .iter()
-                    .map(|v| datatype_inner(ctx.with(PathItem::Type(name)), v))
+                    .map(|v| dfldt_inner(ctx.with(PathItem::Type(name)), v))
                     .collect::<Result<Vec<_>, _>>()?
                     .join(", ");
 
@@ -245,21 +242,21 @@ fn datatype_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExport
     })
 }
 
-fn tuple_datatype(ctx: ExportContext, fields: &[DataType]) -> Result<String, TsExportError> {
+fn tuple_dfldt(ctx: ExportContext, fields: &[DataType]) -> Result<String, TsExportError> {
     match fields {
         [] => Ok("null".to_string()),
-        [ty] => datatype_inner(ctx, ty),
+        [ty] => dfldt_inner(ctx, ty),
         tys => Ok(format!(
             "[{}]",
             tys.iter()
-                .map(|v| datatype_inner(ctx.clone(), v))
+                .map(|v| dfldt_inner(ctx.clone(), v))
                 .collect::<Result<Vec<_>, _>>()?
                 .join(", ")
         )),
     }
 }
 
-fn object_datatype(
+fn object_dfldt(
     ctx: ExportContext,
     name: Option<&'static str>,
     ObjectType { fields, tag, .. }: &ObjectType,
@@ -271,7 +268,7 @@ fn object_datatype(
                 .iter()
                 .filter(|f| f.flatten)
                 .map(|field| {
-                    datatype_inner(ctx.with(PathItem::Field(field.key)), &field.ty)
+                    dfldt_inner(ctx.with(PathItem::Field(field.key)), &field.ty)
                         .map(|type_str| format!("({type_str})"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -279,7 +276,7 @@ fn object_datatype(
             let mut unflattened_fields = fields
                 .iter()
                 .filter(|f| !f.flatten)
-                .map(|f| object_field_to_ts(ctx.with(PathItem::Field(f.key)), f))
+                .filter_map(|f| object_field_to_dfl(ctx.with(PathItem::Field(f.key)), f))
                 .collect::<Result<Vec<_>, _>>()?;
 
             if let Some(tag) = tag {
@@ -298,7 +295,7 @@ fn object_datatype(
     }
 }
 
-fn enum_datatype(
+fn enum_dfldt(
     ctx: ExportContext,
     _ty_name: Option<&'static str>,
     e: &EnumType,
@@ -319,7 +316,7 @@ fn enum_datatype(
                         format!("{{ {tag}: {sanitised_name} }}")
                     }
                     (EnumRepr::Internal { tag }, EnumVariant::Unnamed(tuple)) => {
-                        let typ = datatype_inner(ctx, &DataType::Tuple(tuple.clone()))?;
+                        let typ = dfldt_inner(ctx, &DataType::Tuple(tuple.clone()))?;
                         format!("({{ {tag}: {sanitised_name} }} & {typ})")
                     }
                     (EnumRepr::Internal { tag }, EnumVariant::Named(obj)) => {
@@ -328,7 +325,7 @@ fn enum_datatype(
                         fields.extend(
                             obj.fields
                                 .iter()
-                                .map(|v| object_field_to_ts(ctx.with(PathItem::Field(v.key)), v))
+                                .filter_map(|v| object_field_to_dfl(ctx.with(PathItem::Field(v.key)), v))
                                 .collect::<Result<Vec<_>, _>>()?,
                         );
 
@@ -339,7 +336,7 @@ fn enum_datatype(
                     }
 
                     (EnumRepr::External, v) => {
-                        let ts_values = datatype_inner(ctx.clone(), &v.data_type())?;
+                        let ts_values = dfldt_inner(ctx.clone(), &v.data_type())?;
                         let sanitised_name = sanitise_key(variant_name, false);
 
                         format!("{{ {sanitised_name}: {ts_values} }}")
@@ -348,7 +345,7 @@ fn enum_datatype(
                         format!("{{ {tag}: {sanitised_name} }}")
                     }
                     (EnumRepr::Adjacent { tag, content }, v) => {
-                        let ts_values = datatype_inner(ctx, &v.data_type())?;
+                        let ts_values = dfldt_inner(ctx, &v.data_type())?;
 
                         format!("{{ {tag}: {sanitised_name}; {content}: {ts_values} }}")
                     }
@@ -361,7 +358,7 @@ fn enum_datatype(
             .map(|variant| {
                 Ok(match variant {
                     EnumVariant::Unit => "null".to_string(),
-                    v => datatype_inner(ctx.clone(), &v.data_type())?,
+                    v => dfldt_inner(ctx.clone(), &v.data_type())?,
                 })
             })
             .collect::<Result<Vec<_>, TsExportError>>()?
@@ -369,181 +366,13 @@ fn enum_datatype(
     })
 }
 
-impl LiteralType {
-    fn to_ts(&self) -> String {
-        match self {
-            Self::i8(v) => v.to_string(),
-            Self::i16(v) => v.to_string(),
-            Self::i32(v) => v.to_string(),
-            Self::u8(v) => v.to_string(),
-            Self::u16(v) => v.to_string(),
-            Self::u32(v) => v.to_string(),
-            Self::f32(v) => v.to_string(),
-            Self::f64(v) => v.to_string(),
-            Self::bool(v) => v.to_string(),
-            Self::String(v) => format!(r#""{v}""#),
-            Self::None => "null".to_string(),
-        }
-    }
-}
-
 /// convert an object field into a Typescript string
-fn object_field_to_ts(ctx: ExportContext, field: &ObjectField) -> Result<String, TsExportError> {
-    let field_name_safe = sanitise_key(field.key, false);
-
-    if let DataType::Nullable(ty) = &field.ty {
-        Ok(format!("{field_name_safe}?: {}", datatype_inner(ctx, ty)?))
-    }
-    else {
-        // https://github.com/oscartbeaumont/rspc/issues/100#issuecomment-1373092211
-        let (key, ty) = match field.optional {
-            true => (format!("{field_name_safe}?"), &field.ty),
-            false => (field_name_safe, &field.ty),
-        };
-        Ok(format!("{key}: {}", datatype_inner(ctx, ty)?))
+fn object_field_to_dfl(ctx: ExportContext, field: &ObjectField) -> Option<Result<String, TsExportError>> {
+    match field.ty {
+        DataType::Nullable(_) => None,
+        _ if field.optional => {
+            None
+        },
+        _ => Some(Ok(format!("{}: {}", sanitise_key(field.key, false), dfldt_inner(ctx, &field.ty).ok()?)))
     }
 }
-
-/// sanitise a string to be a valid Typescript key
-fn sanitise_key(field_name: &str, force_string: bool) -> String {
-    let valid = field_name
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '_' || c == '$')
-        && field_name
-            .chars()
-            .next()
-            .map(|first| !first.is_numeric())
-            .unwrap_or(true);
-
-    if force_string || !valid {
-        format!(r#""{field_name}""#)
-    } else {
-        field_name.to_string()
-    }
-}
-
-fn sanitise_type_name(
-    ctx: ExportContext,
-    loc: NamedLocation,
-    ident: &str,
-) -> Result<String, TsExportError> {
-    if let Some(name) = RESERVED_TYPE_NAMES.iter().find(|v| **v == ident) {
-        return Err(TsExportError::ForbiddenName(loc, ctx.export_path(), name));
-    }
-
-    Ok(ident.to_string())
-}
-
-/// Taken from: https://github.com/microsoft/TypeScript/blob/fad889283e710ee947e8412e173d2c050107a3c1/src/compiler/types.ts#L276
-const RESERVED_TYPE_NAMES: &[&str] = &[
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "enum",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "new",
-    "null",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "as",
-    "implements",
-    "interface",
-    "let",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "static",
-    "yield",
-    "any",
-    "boolean",
-    "constructor",
-    "declare",
-    "get",
-    "module",
-    "require",
-    "number",
-    "set",
-    "string",
-    "symbol",
-    "type",
-    "from",
-    "of",
-];
-
-/// Taken from: https://github.com/microsoft/TypeScript/blob/fad889283e710ee947e8412e173d2c050107a3c1/src/compiler/types.ts#L276
-pub const RESERVED_IDENTS: &[&str] = &[
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "enum",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "new",
-    "null",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "as",
-    "implements",
-    "interface",
-    "let",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "static",
-    "yield",
-];

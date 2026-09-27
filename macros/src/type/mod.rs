@@ -177,10 +177,6 @@ pub fn named_data_type_wrapper(
     name: &TokenStream,
     t: TokenStream,
 ) -> TokenStream {
-    let comments = {
-        let comments = &container_attrs.doc;
-        quote!(&[#(#comments),*])
-    };
     let should_export = match container_attrs.export {
         Some(export) => quote!(Some(#export)),
         None => quote!(None),
@@ -195,7 +191,6 @@ pub fn named_data_type_wrapper(
             name: #name,
             sid: Some(SID),
             impl_location: Some(IMPL_LOCATION),
-            comments: #comments,
             export: #should_export,
             deprecated: #deprecated,
             item: #t

@@ -1,11 +1,9 @@
-use super::{comments, BigIntExportBehavior, CommentFormatterFn};
+use super::{BigIntExportBehavior};
 
 /// Options for controlling the behavior of the Typescript exporter.
 pub struct ExportConfiguration {
     /// How BigInts should be exported.
     pub(crate) bigint: BigIntExportBehavior,
-    /// How comments should be rendered.
-    pub(crate) comment_exporter: Option<CommentFormatterFn>,
     /// Whether to export types by default.
     /// This can be overridden on a type basis by using `#[specta(export)]`.
     #[cfg(feature = "export")]
@@ -21,12 +19,6 @@ impl ExportConfiguration {
     /// Configure the BigInt handling behaviour
     pub fn bigint(mut self, bigint: BigIntExportBehavior) -> Self {
         self.bigint = bigint;
-        self
-    }
-
-    /// Configure a function which is responsible for styling the comments to be exported
-    pub fn comment_style(mut self, exporter: Option<CommentFormatterFn>) -> Self {
-        self.comment_exporter = exporter;
         self
     }
 
@@ -46,7 +38,6 @@ impl Default for ExportConfiguration {
     fn default() -> Self {
         Self {
             bigint: Default::default(),
-            comment_exporter: Some(comments::js_doc),
             #[cfg(feature = "export")]
             export_by_default: None,
         }

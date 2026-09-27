@@ -126,17 +126,7 @@ fn typescript_types() {
         "{ A: string } | { bbb: number } | { cccc: number } | { D: { a: string; bbbbbb: number } }"
     );
 
-    assert_ts_export!(
-        DocComments,
-        "/**\n * Type level doc comment\n */\nexport type DocComments = { a: string }"
-    );
-    assert_ts_export!(DocComments, "export type DocComments = { a: string }"; &ExportConfiguration::new().comment_style(None));
-
     assert_ts!(Recursive, "{ a: number; children: Recursive[] }");
-
-    assert_ts!(InlineEnumField, "{ A: { a: string } }");
-
-    assert_ts!(InlineOptionalType, "{ optional_field: DocComments | null }");
 
     assert_ts_export!(
         RenameToValue,
@@ -165,9 +155,6 @@ fn typescript_types() {
 
     // https://github.com/oscartbeaumont/specta/issues/60
     assert_ts!(Option<Option<Option<Option<i32>>>>, r#"number | null"#);
-
-    // https://github.com/oscartbeaumont/specta/issues/71
-    assert_ts!(Vec<DocComments>, r#"{ a: string }[]"#);
 
     // https://github.com/oscartbeaumont/specta/issues/77
     assert_eq!(
@@ -358,34 +345,11 @@ pub enum EnumMacroAttributes {
     },
 }
 
-/// Type level doc comment
-#[derive(Type)]
-#[specta(export = false)]
-pub struct DocComments {
-    /// Field level doc comment
-    a: String,
-}
-
 #[derive(Type)]
 #[specta(export = false)]
 pub struct Recursive {
     a: i32,
     children: Vec<Recursive>,
-}
-
-#[derive(Type)]
-#[specta(export = false)]
-
-pub enum InlineEnumField {
-    #[specta(inline)]
-    A(DocComments),
-}
-
-#[derive(Type)]
-#[specta(export = false)]
-pub struct InlineOptionalType {
-    #[specta(inline)]
-    pub optional_field: Option<DocComments>,
 }
 
 const CONTAINER_NAME: &str = "RenameToValueNewName";

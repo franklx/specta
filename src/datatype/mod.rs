@@ -63,8 +63,6 @@ pub struct NamedDataType {
     pub sid: Option<TypeSid>,
     /// The code location where this type is implemented. Used for error reporting.
     pub impl_location: Option<ImplLocation>,
-    /// Rust documentation comments on the type
-    pub comments: &'static [&'static str],
     /// DEPRECATED. This is not used and shouldn't be. Will be removed in Specta v2!
     pub export: Option<bool>,
     /// The Rust deprecated comment if the type is deprecated.
