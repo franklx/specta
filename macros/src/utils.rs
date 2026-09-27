@@ -256,8 +256,3 @@ impl Inflection {
         }
     }
 }
-
-#[cfg(feature = "functions")]
-pub fn format_fn_wrapper(function: &Ident) -> Ident {
-    quote::format_ident!("__specta__fn__{}", function)
-}

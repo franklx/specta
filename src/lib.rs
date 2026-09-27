@@ -62,10 +62,6 @@ pub mod datatype;
 #[cfg(feature = "export")]
 #[cfg_attr(docsrs, doc(cfg(feature = "export")))]
 pub mod export;
-/// Support for exporting Rust functions.
-#[cfg(feature = "functions")]
-#[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
-pub mod functions;
 mod lang;
 /// Contains [`Type`] and everything related to it, including implementations and helper macros
 pub mod r#type;
@@ -168,27 +164,10 @@ pub use specta_macros::Type;
 /// ```
 pub use specta_macros::DataTypeFrom;
 
-/// Prepares a function to have its types extracted using [`fn_datatype`]
-///
-/// ## Example
-///
-/// ```rust
-/// #[specta::specta]
-/// fn my_function(arg1: i32, arg2: bool) -> &'static str {
-///     "Hello World"
-/// }
-/// ```
-#[cfg(feature = "functions")]
-#[cfg_attr(docsrs, doc(cfg(feature = "functions")))]
-pub use specta_macros::specta;
-
 #[doc(hidden)]
 pub mod internal {
     #[cfg(feature = "export")]
     pub use ctor;
-
-    #[cfg(feature = "functions")]
-    pub use specta_macros::fn_datatype;
 }
 
 #[cfg(doctest)]
