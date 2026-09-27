@@ -24,6 +24,7 @@ fn main() {
         "./bindings2.ts",
         // Be aware this won't be typesafe unless your using a ser/deserializer that converts BigInt types to a number.
         &ExportConfiguration::default().bigint(BigIntExportBehavior::Number),
+        false
     )
     .unwrap();
 }

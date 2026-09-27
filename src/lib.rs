@@ -53,7 +53,7 @@
 //! This results in a loss of information and lack of compatability with types from other crates.
 //!
 #![forbid(unsafe_code)]
-#![warn(clippy::all, clippy::unwrap_used, clippy::panic, missing_docs)]
+#![warn(clippy::all, clippy::unwrap_used, clippy::panic)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 /// Types related to working with [`DataType`](crate::DataType). Exposed for advanced users.

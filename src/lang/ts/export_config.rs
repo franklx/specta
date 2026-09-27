@@ -1,6 +1,7 @@
 use super::{BigIntExportBehavior};
 
 /// Options for controlling the behavior of the Typescript exporter.
+#[derive(Default)]
 pub struct ExportConfiguration {
     /// How BigInts should be exported.
     pub(crate) bigint: BigIntExportBehavior,
@@ -31,15 +32,5 @@ impl ExportConfiguration {
     pub fn export_by_default(mut self, x: Option<bool>) -> Self {
         self.export_by_default = x;
         self
-    }
-}
-
-impl Default for ExportConfiguration {
-    fn default() -> Self {
-        Self {
-            bigint: Default::default(),
-            #[cfg(feature = "export")]
-            export_by_default: None,
-        }
     }
 }

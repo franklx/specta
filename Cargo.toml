@@ -27,7 +27,7 @@ name = "export"
 required-features = ["export"]
 
 [features]
-default = ["serde", "typescript"]
+default = ["serde"]
 
 ##! Internal Features
 export = ["dep:ctor", "specta-macros/export"]
@@ -35,10 +35,6 @@ export = ["dep:ctor", "specta-macros/export"]
 #! Compatability
 ## Support for [serde](https://serde.rs) and [serde-json](https://github.com/serde-rs/json)
 serde = ["specta-macros/serde", "dep:serde_json"]
-
-#! Languages
-## Support for [TypeScript](https://www.typescriptlang.org) language exporting
-typescript = []
 
 #! External types
 ## [uuid](https://docs.rs/uuid) crate

@@ -8,6 +8,7 @@ pub use comments::*;
 pub use context::*;
 pub use error::*;
 pub use export_config::*;
+pub use defaults::*;
 
 use crate::*;
 
