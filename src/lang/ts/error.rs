@@ -37,7 +37,7 @@ pub enum TsExportError {
     ForbiddenName(NamedLocation, ExportPath, &'static str),
     #[error("Attempted to export '{0}' with tagging but the type is not tagged.")]
     InvalidTagging(ExportPath),
-    #[error("Unable to export type named '{0}' from locations '{:?}' '{:?}'", .1.map(|v| v.as_str()), .2.map(|v| v.as_str()))]
+    #[error("Unable to export type named '{0}' from locations '{one:?}' '{two:?}'", one=.1.map(|v| v.as_str()), two=.2.map(|v| v.as_str()))]
     DuplicateTypeName(&'static str, Option<ImplLocation>, Option<ImplLocation>),
     #[error("{0}")]
     SpectaExportError(#[from] ExportError),

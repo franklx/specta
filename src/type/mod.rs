@@ -23,7 +23,7 @@ pub enum TypeCategory {
 #[derive(Error, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(missing_docs)]
 pub enum ExportError {
-    #[error("Atemmpted to export type defined at '{}' but encountered error: {1}", .0.as_str())]
+    #[error("Atemmpted to export type defined at '{err}' but encountered error: {1}", err=.0.as_str())]
     InvalidType(ImplLocation, &'static str),
 }
 
