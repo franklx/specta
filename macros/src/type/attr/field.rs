@@ -31,6 +31,7 @@ impl_parse! {
             }))
         },
         "type" => out.r#type = out.r#type.take().or(Some(Type::Path(TypePath {
+            attrs: Vec::new(),
             qself: None,
             path: attr.parse_path()?,
         }))),

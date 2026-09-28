@@ -1,10 +1,6 @@
 use proc_macro2::Span;
 use syn::{
-    ext::IdentExt,
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    spanned::Spanned,
-    Ident, Lit, Path, Result, Token,
+    Ident, Lit, MetaNameValue, Path, Result, Token, ext::IdentExt, parse::{Parse, ParseStream}, punctuated::Punctuated, spanned::Spanned,
 };
 
 #[derive(Clone)]
@@ -137,7 +133,7 @@ pub fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Vec<Attribute>> {
         .iter()
         .map(|attr| {
             let ident = attr
-                .path
+                .path()
                 .get_ident()
                 .expect("Attribute path must be an ident")
                 .clone();
@@ -147,14 +143,13 @@ pub fn parse_attrs(attrs: &[syn::Attribute]) -> syn::Result<Vec<Attribute>> {
             }
 
             if ident == "doc" {
-                let meta = attr.parse_meta()?;
-                return match meta {
-                    syn::Meta::NameValue(value) => Ok(vec![Attribute {
+                return match attr.meta {
+                    syn::Meta::NameValue(MetaNameValue { value: syn::Expr::Lit(ref expr), .. }) => Ok(vec![Attribute {
                         root_ident: ident.clone(),
                         key: ident,
-                        value: Some(AttributeValue::Lit(value.lit)),
+                        value: Some(AttributeValue::Lit(expr.lit.clone())),
                     }]),
-                    _ => Err(syn::Error::new(meta.span(), "specta: invalid doc comment")),
+                    _ => Err(syn::Error::new(attr.meta.span(), "specta: invalid doc comment")),
                 };
             }
 

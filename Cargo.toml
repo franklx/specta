@@ -12,6 +12,8 @@ keywords = ["async", "specta", "typescript", "typesafe"]
 categories = ["web-programming", "asynchronous"]
 autotests = false
 
+publish = ["elleci"]
+
 # /bin/sh RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features
 [package.metadata."docs.rs"]
 all-features = true
@@ -69,7 +71,7 @@ tokio = ["dep:tokio"]
 url = ["dep:url"]
 
 [dependencies]
-specta-macros = { version = "1.0.5", path = "./macros" }
+specta-macros = { registry = "elleci", version = "1", path = "./macros" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", optional = true, default-features = false, features = ["std"] }
 uuid = { version = "1.2", optional = true, default-features = false, features = [] }

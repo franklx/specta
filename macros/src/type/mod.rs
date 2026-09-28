@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use r#enum::parse_enum;
 use r#struct::parse_struct;
-use syn::{parse_macro_input, Data, DeriveInput};
+use syn::{Data, DeriveInput, parse};
 
 use generics::impl_heading;
 
@@ -28,11 +28,11 @@ pub fn derive(
         data,
         attrs,
         ..
-    } = &parse_macro_input::parse::<DeriveInput>(input)?;
+    } = &parse::<DeriveInput>(input)?;
 
     // We pass all the attributes at the start and when decoding them pop them off the list.
     // This means at the end we can check for any that weren't consumed and throw an error.
-    let mut attrs = parse_attrs(attrs)?;
+    let mut attrs = parse_attrs(&attrs)?;
     let container_attrs = ContainerAttr::from_attrs(&mut attrs)?;
 
     let ident = container_attrs
