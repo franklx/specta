@@ -1,7 +1,7 @@
 [package]
 name = "specta"
 description = "Easily export your Rust types to other languages"
-version = "1.0.5+frk.1"
+version = "1.1.0+frk.1"
 authors = ["Oscar Beaumont <oscar@otbeaumont.me>"]
 edition = "2021"
 license = "MIT"
@@ -89,7 +89,7 @@ tokio = { version = "1", optional = true, default-features = false, features = [
 url = { version = "2", optional = true, default-features = false }
 paste = "1"
 document-features = "0.2"
-ctor = { version = "0.1", optional = true }
+ctor = { version = "1", optional = true, default-features = false, features = ["std"] }
 once_cell = "1.16"
 indoc = "2"
 thiserror = "1"

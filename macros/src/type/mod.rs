@@ -117,21 +117,23 @@ pub fn derive(
         let ty = quote!(<#ident<#(#generic_params),*> as #crate_name::Type>);
 
         quote! {
-            #[#crate_name::internal::ctor::ctor]
-            #[allow(non_snake_case)]
-            fn #export_fn_name() {
-                let (type_map, errors) = &mut *#crate_name::export::TYPES.lock().unwrap();
+            #crate_name::internal::ctor::declarative::ctor!(
+                #[ctor(unsafe)]
+                #[allow(non_snake_case)]
+                fn #export_fn_name() {
+                    let (type_map, errors) = &mut *#crate_name::export::TYPES.lock().unwrap();
 
-                if let Err(err) = #ty::reference(
-                    #crate_name::DefOpts {
-                        parent_inline: false,
-                        type_map
-                    },
-                    &[]
-                ) {
-                    errors.insert(err);
+                    if let Err(err) = #ty::reference(
+                        #crate_name::DefOpts {
+                            parent_inline: false,
+                            type_map
+                        },
+                        &[]
+                    ) {
+                        errors.insert(err);
+                    }
                 }
-            }
+            );
         }
     });
 
