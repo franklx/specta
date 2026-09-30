@@ -12,6 +12,7 @@ use crate::{
         ExportConfiguration, ExportContext,
         NamedLocation, PathItem,
         TsExportError,
+        datatype_inner,
         sanitise_key,
         sanitise_type_name,
     }
@@ -91,6 +92,7 @@ fn export_dfldt_inner(
             NamedDataTypeItem::Enum(enum_) => DataType::Enum(enum_.clone()),
             NamedDataTypeItem::Custom(custom) => DataType::Custom(custom.clone()),
         },
+        false
     )?;
 
     let generics = match item {
@@ -98,7 +100,7 @@ fn export_dfldt_inner(
         NamedDataTypeItem::Object(ObjectType {
             generics, fields, ..
         }) => match fields.len() {
-            0 => Some(generics),
+            0 => None,
             _ => (!generics.is_empty()).then_some(generics),
         },
         // Enum
@@ -127,10 +129,10 @@ fn export_dfldt_inner(
 pub fn dfldt(conf: &ExportConfiguration, typ: &DataType) -> Result<String, TsExportError> {
     // TODO: Duplicate type name detection?
 
-    dfldt_inner(ExportContext { conf, path: vec![] }, typ)
+    dfldt_inner(ExportContext { conf, path: vec![] }, typ, false)
 }
 
-fn dfldt_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportError> {
+fn dfldt_inner(ctx: ExportContext, typ: &DataType, is_attr: bool) -> Result<String, TsExportError> {
     Ok(match &typ {
         DataType::Any => "null".into(),
         DataType::Primitive(p) => {
@@ -157,46 +159,38 @@ fn dfldt_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportErr
             "{}".into()
         }
         DataType::Record(def) => {
-            let divider = match &def.0 {
-                DataType::Enum(_) => " in",
-                DataType::Named(dt) => match dt.item {
-                    NamedDataTypeItem::Enum(_) => " in",
-                    _ => ":",
-                },
-                _ => ":",
-            };
-
             format!(
-                // We use this isn't of `Record<K, V>` to avoid issues with circular references.
-                "{{ [key{divider} {}]: {} }}",
-                dfldt_inner(ctx.clone(), &def.0)?,
-                dfldt_inner(ctx, &def.1)?
+                "{{}} as Record<{},{}>",
+                datatype_inner(ctx.clone(), &def.0)?,
+                datatype_inner(ctx, &def.1)?
             )
         }
         // We use `T[]` instead of `Array<T>` to avoid issues with circular references.
         DataType::List(def) => {
-            format!("[] as {}[]", dfldt_inner(ctx, def)?)
+            format!("[] as {}[]", datatype_inner(ctx, def)?)
         }
-        // TODO: why here we don't know if it's inlined?
         DataType::Named(NamedDataType {
             item: NamedDataTypeItem::Custom(custom),
             ..
         }) => custom.to_string(),
-
-        DataType::Named(NamedDataType { name, .. }) => name.to_string(),
+        DataType::Named(NamedDataType { name, .. }) => if is_attr { format!("undefined as {name}") } else { name.to_string() },
         DataType::Tuple(TupleType { fields, .. }) => tuple_dfldt(ctx, fields)?,
         DataType::Object(item) => object_dfldt(ctx, None, item)?,
-        DataType::Enum(_) => unimplemented!("Enum support must look for the default attribute on Variant"),
+        DataType::Enum(_) => unimplemented!("Default for enums is not supported"),
         DataType::Reference(DataTypeReference { name, generics, .. }) => match &generics[..] {
-            [] => name.to_string(),
+            [] => if is_attr { format!("undefined as {name}") } else { name.to_string() },
             generics => {
                 let generics = generics
                     .iter()
-                    .map(|v| dfldt_inner(ctx.with(PathItem::Type(name)), v))
+                    .map(|v| dfldt_inner(ctx.with(PathItem::Type(name)), v, false))
                     .collect::<Result<Vec<_>, _>>()?
                     .join(", ");
-
-                format!("{name}<{generics}>")
+                if is_attr {
+                    format!("undefined as {name}<{generics}>")
+                }
+                else {
+                    format!("{name}<{generics}>")
+                }
             }
         },
         DataType::Generic(GenericType(ident)) => ident.to_string(),
@@ -207,11 +201,11 @@ fn dfldt_inner(ctx: ExportContext, typ: &DataType) -> Result<String, TsExportErr
 fn tuple_dfldt(ctx: ExportContext, fields: &[DataType]) -> Result<String, TsExportError> {
     match fields {
         [] => Ok("null".to_string()),
-        [ty] => dfldt_inner(ctx, ty),
+        [ty] => dfldt_inner(ctx, ty, true),
         tys => Ok(format!(
             "[{}]",
             tys.iter()
-                .map(|v| dfldt_inner(ctx.clone(), v))
+                .map(|v| dfldt_inner(ctx.clone(), v, true))
                 .collect::<Result<Vec<_>, _>>()?
                 .join(", ")
         )),
@@ -230,7 +224,7 @@ fn object_dfldt(
                 .iter()
                 .filter(|f| f.flatten)
                 .map(|field| {
-                    dfldt_inner(ctx.with(PathItem::Field(field.key)), &field.ty)
+                    dfldt_inner(ctx.with(PathItem::Field(field.key)), &field.ty, false)
                         .map(|type_str| format!("dfl_{type_str}()"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -270,10 +264,11 @@ fn object_dfldt(
 /// convert an object field into a Typescript string
 fn object_field_to_dfl(ctx: ExportContext, field: &ObjectField) -> Option<Result<String, TsExportError>> {
     match field.ty {
-        DataType::Nullable(_) => None,
-        _ if field.optional => {
-            None
-        },
-        _ => Some(Ok(format!("{}: {}", sanitise_key(field.key, false), dfldt_inner(ctx, &field.ty).ok()?)))
+        DataType::Nullable(_) =>
+            None,
+        _ if field.optional =>
+            None,
+        _ =>
+            Some(Ok(format!("{}: {}", sanitise_key(field.key, false), dfldt_inner(ctx, &field.ty, true).ok()?)))
     }
 }

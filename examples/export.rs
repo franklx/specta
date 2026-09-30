@@ -17,7 +17,7 @@ pub struct TypeTwo {
 
 fn main() {
     // This will automatically discover all types in your project!
-    export::ts("./bindings.ts").unwrap();
+    export::ts("./bindings.ts", true).unwrap();
 
     // You can also override the export configuration.
     export::ts_with_cfg(

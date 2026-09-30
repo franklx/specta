@@ -93,7 +93,7 @@ fn export_datatype_inner(
         NamedDataTypeItem::Object(ObjectType {
             generics, fields, ..
         }) => match fields.len() {
-            0 => Some(generics),
+            0 => None,
             _ => (!generics.is_empty()).then_some(generics),
         },
         // Enum
